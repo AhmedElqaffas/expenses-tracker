@@ -23,8 +23,7 @@
   "panels": [
     {
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "cewvhfmf1chdsd"
+        "type": "grafana-postgresql-datasource"
       },
       "description": "Distribution of spendings by category",
       "fieldConfig": {
@@ -39,7 +38,9 @@
               "viz": false
             }
           },
-          "mappings": []
+          "fieldMinMax": false,
+          "mappings": [],
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -58,15 +59,16 @@
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "values": []
         },
         "pieType": "pie",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "p14"
           ],
-          "fields": "",
-          "limit": 98,
+          "fields": "/^\\?column\\?$/",
+          "limit": 100,
           "values": true
         },
         "tooltip": {
@@ -79,8 +81,7 @@
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "cewvhfmf1chdsd"
+            "type": "grafana-postgresql-datasource"
           },
           "editorMode": "code",
           "format": "table",
@@ -147,5 +148,5 @@
   "timezone": "browser",
   "title": "Tracker",
   "uid": "a48b2a4b-7429-4dd2-99cc-3233c3e43852",
-  "version": 2
+  "version": 1
 }
