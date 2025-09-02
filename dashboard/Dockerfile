@@ -1,5 +1,5 @@
 # Start from the official Grafana image
-FROM grafana/grafana:latest
+FROM grafana/grafana:12.2.0-17389662039-ubuntu
 
 # Copy your dashboard JSON into provisioning folder
 # Grafana looks for dashboards in /etc/grafana/provisioning/dashboards/
