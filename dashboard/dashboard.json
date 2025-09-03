@@ -109,7 +109,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT name, SUM(amount) FROM \r\nspendings JOIN spendings_categories ON spendings.id = spendings_categories.spending\r\nJOIN categories ON categories.id = spendings_categories.category\r\nGROUP BY name",
+          "rawSql": "SELECT name, SUM(amount) FROM \r\nspendings JOIN spendings_categories ON spendings.id = spendings_categories.spending\r\nJOIN categories ON categories.id = spendings_categories.category\r\nWHERE name IN ( $categories )\r\nAND date BETWEEN '${__from:date:iso}' AND '${__to:date:iso}'\r\nGROUP BY name",
           "refId": "A",
           "sql": {
             "columns": [
