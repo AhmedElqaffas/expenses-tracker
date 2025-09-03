@@ -250,6 +250,28 @@
         "regex": "",
         "sort": 1,
         "type": "query"
+      },
+      {
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "definition": "SELECT DISTINCT(item) FROM spendings",
+        "description": "Filter by specific item name",
+        "includeAll": true,
+        "label": "Items",
+        "multi": true,
+        "name": "items",
+        "options": [],
+        "query": "SELECT DISTINCT(item) FROM spendings",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
       }
     ]
   },
