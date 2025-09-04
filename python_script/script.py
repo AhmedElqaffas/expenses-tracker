@@ -1,14 +1,13 @@
 import argparse
 import datetime
 import os
+import sys
 import uuid
 from dataclasses import dataclass
 
 import psycopg
 from dotenv import load_dotenv
 
-load_dotenv()
-db_connection_string = os.environ.get("DB_CONNECTION_STRING")
 
 @dataclass
 class Spending:
@@ -17,9 +16,17 @@ class Spending:
     categories: list[str]
     date: datetime.date
 
+def load_env():
+    load_dotenv()
+    if getattr(sys, 'frozen', False):  # running from a PyInstaller exe
+        basedir = sys._MEIPASS
+    else:
+        basedir = os.path.dirname(__file__)
+
+    load_dotenv(os.path.join(basedir, ".env"))
 
 def get_available_categories():
-    with psycopg.connect(db_connection_string) as conn:
+    with psycopg.connect(os.environ["DB_CONNECTION_STRING"]) as conn:
         with conn.cursor() as cur:
             cur.execute("""
             SELECT name FROM categories
@@ -66,7 +73,7 @@ def store(spending: Spending):
     date = spending.date
     print("Recording the following spending:")
     print(f"\tPaid {amount} on {date.day}-{date.month}-{date.year} for {item}. #{(' #'.join(categories))}")
-    with psycopg.connect(db_connection_string) as conn:
+    with psycopg.connect(os.environ["DB_CONNECTION_STRING"]) as conn:
         with conn.cursor() as cur:
             cur.execute("""
             INSERT INTO spendings (id, amount, item, date) VALUES (%s, %s, %s, %s)
@@ -87,6 +94,7 @@ def store(spending: Spending):
         conn.commit()
         conn.close()
 
+load_env()
 print("Fetching spending categories...")
 categories = get_available_categories()
 parser = setup_parser()

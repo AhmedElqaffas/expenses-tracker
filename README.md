@@ -21,6 +21,14 @@ You can use -h to get help
 ```commandline
 uv run python_script/script.py -h
 ```
+### Generating exe
+To generate an executable script file (with dependencies bundled), run the following command
+```commandline
+ uv run pyinstaller --onefile -n expenses-tracker --collect-all psycopg  --add-data ".env;." .\python_script\script.py
+```
+- --add-data is needed to bundle the env variables with the exe.
+- --collect-all is needed to bundle binary `psycopg` files
+
 ## Postgres Database
 A remotely hosted database (on [Supabase](https://supabase.com/)).
 The schema for this database can be found in `./database_schema/schema.sql`.
