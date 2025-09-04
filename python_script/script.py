@@ -31,8 +31,8 @@ def get_available_categories():
 
 def setup_parser():
     parser = argparse.ArgumentParser(
-        prog='Spendings Tracker',
-        description='Saves your spendings to a sql database',
+        prog="Spending Tracker",
+        description="Saves your expenses to a sql database",
         add_help=True)
     parser.add_argument("amount", help="Amount of the spending")
     parser.add_argument("item", help="The item paid for")
@@ -61,7 +61,7 @@ def parse(parser: argparse.ArgumentParser) -> Spending:
 def store(spending: Spending):
     spending_id = uuid.uuid4()
     amount = spending.amount
-    item = spending.item
+    item = spending.item.lower()
     categories = spending.categories
     date = spending.date
     print("Recording the following spending:")
