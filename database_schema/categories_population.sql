@@ -21,3 +21,6 @@ VALUES(gen_random_uuid(),'mobile');
 
 INSERT INTO public.categories
 VALUES(gen_random_uuid(),'bill');
+
+INSERT INTO public.categories
+VALUES(gen_random_uuid(),'health');
