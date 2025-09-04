@@ -15,16 +15,16 @@ It takes the following parameters:
 
 Example: 
 ```commandline
-uv run python_script/script.py 300 fifa entertainment
+uv run python_script/expenses-tracker.py 300 fifa entertainment
 ```
 You can use -h to get help
 ```commandline
-uv run python_script/script.py -h
+uv run python_script/expenses-tracker.py -h
 ```
 ### Generating exe
 To generate an executable script file (with dependencies bundled), run the following command
 ```commandline
- uv run pyinstaller --onefile -n expenses-tracker --collect-all psycopg  --add-data ".env;." .\python_script\script.py
+ uv run pyinstaller --onefile --collect-all psycopg  --add-data ".env;." .\python_script\expenses-tracker.py
 ```
 - --add-data is needed to bundle the env variables with the exe.
 - --collect-all is needed to bundle binary `psycopg` files
