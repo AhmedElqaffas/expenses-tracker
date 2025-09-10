@@ -17,7 +17,7 @@ INSERT INTO public.categories
 VALUES(gen_random_uuid(),'car');
 
 INSERT INTO public.categories
-VALUES(gen_random_uuid(),'mobile');
+VALUES(gen_random_uuid(),'electronics');
 
 INSERT INTO public.categories
 VALUES(gen_random_uuid(),'bill');
