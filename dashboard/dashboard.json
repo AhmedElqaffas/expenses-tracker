@@ -202,7 +202,7 @@
           "mode": "single",
           "sort": "none"
         },
-        "xTickLabelRotation": 0,
+        "xTickLabelRotation": 45,
         "xTickLabelSpacing": 0
       },
       "pluginVersion": "12.2.0-17389662039",
@@ -286,7 +286,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 8
       },
