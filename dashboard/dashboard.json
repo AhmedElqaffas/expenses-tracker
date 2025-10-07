@@ -21,7 +21,7 @@
   "id": 1,
   "links": [],
   "panels": [
-     {
+    {
       "datasource": {
         "type": "grafana-postgresql-datasource"
       },
@@ -126,118 +126,6 @@
         }
       ],
       "title": "Monthly Spending",
-      "type": "barchart"
-    },
-    {
-      "datasource": {
-        "type": "grafana-postgresql-datasource"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "fillOpacity": 80,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineWidth": 0,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "LE"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "barRadius": 0,
-        "barWidth": 0.11,
-        "colorByField": "name",
-        "fullHighlight": false,
-        "groupWidth": 0.7,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "orientation": "auto",
-        "showValue": "auto",
-        "stacking": "none",
-        "text": {
-          "percentSize": 1
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        },
-        "xTickLabelRotation": 0,
-        "xTickLabelSpacing": 200
-      },
-      "pluginVersion": "12.2.0-17389662039",
-      "targets": [
-        {
-          "dataset": "postgres",
-          "editorMode": "code",
-          "format": "table",
-          "rawQuery": true,
-          "rawSql": "SELECT name, SUM(amount) FROM \r\nspendings JOIN spendings_categories ON spendings.id = spendings_categories.spending\r\nJOIN categories ON categories.id = spendings_categories.category\r\nWHERE name IN ( $categories )\r\nAND date BETWEEN '${__from:date:iso}' AND '${__to:date:iso}'\r\nGROUP BY name",
-          "refId": "A",
-          "sql": {
-            "columns": [
-              {
-                "parameters": [],
-                "type": "function"
-              }
-            ],
-            "groupBy": [
-              {
-                "property": {
-                  "type": "string"
-                },
-                "type": "groupBy"
-              }
-            ],
-            "limit": 50
-          }
-        }
-      ],
-      "title": "Spending per Category",
       "type": "barchart"
     },
     {
@@ -352,6 +240,119 @@
       "datasource": {
         "type": "grafana-postgresql-datasource"
       },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "LE"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.11,
+        "colorByField": "name",
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "text": {
+          "percentSize": 1
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        },
+        "xField": "name",
+        "xTickLabelRotation": 45,
+        "xTickLabelSpacing": 100
+      },
+      "pluginVersion": "12.2.0-17389662039",
+      "targets": [
+        {
+          "dataset": "postgres",
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT name, SUM(amount) FROM \r\nspendings JOIN spendings_categories ON spendings.id = spendings_categories.spending\r\nJOIN categories ON categories.id = spendings_categories.category\r\nWHERE name IN ( $categories )\r\nAND date BETWEEN '${__from:date:iso}' AND '${__to:date:iso}'\r\nGROUP BY name",
+          "refId": "A",
+          "sql": {
+            "columns": [
+              {
+                "parameters": [],
+                "type": "function"
+              }
+            ],
+            "groupBy": [
+              {
+                "property": {
+                  "type": "string"
+                },
+                "type": "groupBy"
+              }
+            ],
+            "limit": 50
+          }
+        }
+      ],
+      "title": "Spending per Category",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "grafana-postgresql-datasource"
+      },
       "description": "Distribution of spending by category",
       "fieldConfig": {
         "defaults": {
@@ -375,7 +376,7 @@
         "h": 8,
         "w": 12,
         "x": 6,
-        "y": 8
+        "y": 16
       },
       "id": 1,
       "options": {
