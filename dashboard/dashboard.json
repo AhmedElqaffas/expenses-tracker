@@ -104,7 +104,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT to_char(date, 'MM/YYYY') AS \"month_year\", SUM(amount) FROM \r\nspendings JOIN spendings_categories ON spendings.id = spendings_categories.spending\r\nJOIN categories ON categories.id = spendings_categories.category\r\nWHERE name IN ( $categories )\r\nAND item in ($items)\r\nAND date BETWEEN '${__from:date:iso}' AND '${__to:date:iso}'\r\nGROUP BY month_year",
+          "rawSql": "SELECT to_char(s.date, 'MM/YYYY') AS \"month_year\", SUM(s.amount) \r\nFROM (\r\n  SELECT DISTINCT (spendings.id), spendings.amount, spendings.date, spendings.item\r\n  FROM spendings\r\n  JOIN spendings_categories ON spendings_categories.spending = spendings.id\r\n  JOIN categories ON categories.id = spendings_categories.category\r\n  WHERE categories.name IN ($categories)\r\n) AS s\r\n\r\nWHERE item in ($items)\r\nAND date BETWEEN '${__from:date:iso}' AND '${__to:date:iso}'\r\nGROUP BY month_year",
           "refId": "A",
           "sql": {
             "columns": [
