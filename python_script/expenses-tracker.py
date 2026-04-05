@@ -8,7 +8,9 @@ from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Input, Label
 
-from commands import SLASH_COMMANDS, ArgSpec
+from categories_service import CategoriesService
+from commands import ArgSpec, Commands
+from commands_registry import CommandRegistry
 from suggesstions_list import CommandSuggestions
 from text_area import MainTextArea
 
@@ -22,7 +24,7 @@ class InputState:
     def current_arg(self, commands: dict) -> Union[ArgSpec, None]:
         if not self.command:
             return None
-        args = commands[self.command]["args"]
+        args = commands[self.command].args
         if self.current_arg_index < len(args):
             return args[self.current_arg_index]
         return None
@@ -30,7 +32,7 @@ class InputState:
     def is_complete(self, commands: dict) -> bool:
         if not self.command:
             return False
-        return self.current_arg_index >= len(commands[self.command]["args"])
+        return self.current_arg_index >= len(commands[self.command].args)
 
     def reset(self) -> None:
         self.command = None
@@ -63,6 +65,8 @@ class ExpensesTracker(App):
 
     AUTO_FOCUS = "#input"
 
+    categories_service: CategoriesService
+
     text_area: MainTextArea
     input_field: Input
     suggestions_list: CommandSuggestions
@@ -70,9 +74,13 @@ class ExpensesTracker(App):
 
     state = InputState()
 
-    def __init__(self):
+    def __init__(self, categories_service: CategoriesService) -> None:
         super().__init__()
         self._load_env()
+        self.categories_service = categories_service
+        categories_service.load_categories()
+        self.command_registry = CommandRegistry()
+        self.command_registry.register(categories_service)
 
     def _load_env(self):
         load_dotenv()
@@ -98,14 +106,15 @@ class ExpensesTracker(App):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         value = event.value
+        specs = self.command_registry.all_specs()
 
         # Step 1: no command chosen yet — suggest commands on "/"
         if self.state.command is None:
             if value.startswith("/"):
                 query = value[1:].lower()
                 matches = [
-                    (cmd, meta["description"])
-                    for cmd, meta in SLASH_COMMANDS.items()
+                    (cmd, meta.description)
+                    for cmd, meta in specs.items()
                     if cmd.startswith(query)
                 ]
                 self.suggestions_list.show_suggestions(matches)
@@ -114,11 +123,11 @@ class ExpensesTracker(App):
             return
 
         # Step 2+: command chosen, collecting args
-        current_arg = self.state.current_arg(SLASH_COMMANDS)
-        if current_arg and current_arg.suggestions:
+        current_arg = self.state.current_arg(specs)
+        if current_arg and current_arg.suggestions_supplier and current_arg.suggestions_supplier(self.categories_service):
             matches = [
                 (s, current_arg.name)
-                for s in current_arg.suggestions
+                for s in current_arg.suggestions_supplier(self.categories_service)
                 if s.startswith(value.lower())
             ]
             self.suggestions_list.show_suggestions(matches)
@@ -126,6 +135,7 @@ class ExpensesTracker(App):
             self.suggestions_list.hide()
 
     def _update_placeholder(self) -> None:
+        specs = self.command_registry.all_specs()
         if self.state.command is None:
             self.input_field.placeholder = "Type / for commands"
             self.prefix.update("")
@@ -138,10 +148,11 @@ class ExpensesTracker(App):
         self.prefix.update(" ".join(parts) + " ")
 
         # Update placeholder for current arg
-        current_arg = self.state.current_arg(SLASH_COMMANDS)
+        current_arg = self.state.current_arg(specs)
         if current_arg:
-            if current_arg.suggestions:
-                options = ", ".join(current_arg.suggestions)
+            if current_arg.suggestions_supplier and current_arg.suggestions_supplier(
+                    self.categories_service):
+                options = ", ".join(current_arg.suggestions_supplier(self.categories_service))
                 self.input_field.placeholder = f"{current_arg.name}: {options}"
             else:
                 self.input_field.placeholder = f"Enter {current_arg.name}..."
@@ -181,7 +192,8 @@ class ExpensesTracker(App):
             highlighted = self.suggestions_list.highlighted_child
             if highlighted:
                 self._complete_suggestion()
-                event.prevent_default()
+                if not self.state.is_complete(self.command_registry.all_specs()):
+                    event.prevent_default()  # more args needed, stay in input
                 event.stop()
         elif event.key == "escape":
             self.suggestions_list.hide()
@@ -192,7 +204,7 @@ class ExpensesTracker(App):
         if self.state.current_arg_index > 0:
             # Undo last collected arg — restore its value to input
             self.state.current_arg_index -= 1
-            current_arg = self.state.current_arg(SLASH_COMMANDS)
+            current_arg = self.state.current_arg(self.command_registry.all_specs())
             last_value = self.state.collected_args.pop(current_arg.name, "")
             self.input_field.value = last_value
         elif self.state.command is not None:
@@ -224,7 +236,7 @@ class ExpensesTracker(App):
 
     def _advance_arg(self, value: str) -> None:
         """Store current arg value and move to the next one."""
-        current_arg = self.state.current_arg(SLASH_COMMANDS)
+        current_arg = self.state.current_arg(self.command_registry.all_specs())
         if current_arg:
             self.state.collected_args[current_arg.name] = value
             self.state.current_arg_index += 1
@@ -233,14 +245,20 @@ class ExpensesTracker(App):
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         self.suggestions_list.hide()
         raw = event.value.strip()
+        specs = self.command_registry.all_specs()
 
-        # No command chosen yet — ignore empty submit
         if self.state.command is None:
             return
 
-        current_arg = self.state.current_arg(SLASH_COMMANDS)
+        # If already complete (last arg was filled via suggestion), execute immediately
+        if self.state.is_complete(specs):
+            event.input.clear()
+            await self._execute_command(self.state.command, self.state.collected_args)
+            self._reset_flow()
+            return
 
-        # Collect the current free-text arg from input
+        # Otherwise collect the current free-text arg from input
+        current_arg = self.state.current_arg(specs)
         if current_arg:
             if not raw:
                 self.text_area.add_message(
@@ -249,38 +267,17 @@ class ExpensesTracker(App):
                 return
             self._advance_arg(raw)
 
-        # Check if all args are now collected
-        if not self.state.is_complete(SLASH_COMMANDS):
+        # Check again after collecting — might now be complete
+        if self.state.is_complete(specs):
+            event.input.clear()
+            await self._execute_command(self.state.command, self.state.collected_args)
+            self._reset_flow()
+        else:
             event.input.clear()
             self._update_placeholder()
-            return
-
-        # All args collected — execute
-        event.input.clear()
-        await self._execute_command(self.state.command, self.state.collected_args)
-        self._reset_flow()
 
     async def _execute_command(self, command: str, args: dict[str, str]) -> None:
-        if command == "print":
-            level = args["log_level"]
-            message = args["message"]
-            color = "red"
-            self.text_area.add_message(f"[{color}] {level.upper()}[/{color}]  {message}")
-
-        elif command == "clear":
-            self.text_area.clear()
-
-
-# def get_available_categories():
-#     with psycopg.connect(os.environ["DB_CONNECTION_STRING"]) as conn:
-#         with conn.cursor() as cur:
-#             cur.execute("""
-#             SELECT name FROM categories
-#             """)
-#             # map tuples to category names
-#             categories = sorted([c[0] for c in cur.fetchall()])
-#         conn.close()
-#     return categories
+        await self.command_registry.execute(command, args, self)
 
 
 # def setup_parser():
@@ -342,7 +339,7 @@ class ExpensesTracker(App):
 #         conn.close()
 
 if __name__ == "__main__":
-    app = ExpensesTracker()
+    app = ExpensesTracker(CategoriesService())
     app.run()
 
 # print("Fetching spending categories...")
