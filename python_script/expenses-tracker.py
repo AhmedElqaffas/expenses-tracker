@@ -94,7 +94,7 @@ class ExpensesTracker(App):
             yield self.input_field
 
     async def on_mount(self) -> None:
-        self.text_area.add_message("\n 👋 [bold]Welcome, spender![/bold]\n\n")
+        self.text_area.add_message("\n :wave: [bold]Welcome, spender![/bold]\n\n")
 
     def on_input_changed(self, event: Input.Changed) -> None:
         value = event.value
