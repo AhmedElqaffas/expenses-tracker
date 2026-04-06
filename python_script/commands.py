@@ -16,6 +16,7 @@ class CommandSpec:
     args: list[ArgSpec] = field(default_factory=list)
 
 class Commands(StrEnum):
+    LOAD_CATEGORIES = "load_categories"
     PRINT = "print"
     ADD_CATEGORY = "add_category"
     REMOVE_CATEGORY = "remove_category"

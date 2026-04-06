@@ -4,12 +4,13 @@ from dataclasses import dataclass, field
 from typing import Union
 
 from dotenv import load_dotenv
+from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Input, Label
 
 from categories_service import CategoriesService
-from commands import ArgSpec, Commands
+from commands import ArgSpec
 from commands_registry import CommandRegistry
 from suggesstions_list import CommandSuggestions
 from text_area import MainTextArea
@@ -102,7 +103,7 @@ class ExpensesTracker(App):
             yield self.input_field
 
     async def on_mount(self) -> None:
-        self.text_area.add_message("\n :wave: [bold]Welcome, spender![/bold]\n\n")
+        self.text_area.write("\n :wave: [bold]Welcome, spender![/bold]\n\n")
 
     def on_input_changed(self, event: Input.Changed) -> None:
         value = event.value
@@ -124,7 +125,8 @@ class ExpensesTracker(App):
 
         # Step 2+: command chosen, collecting args
         current_arg = self.state.current_arg(specs)
-        if current_arg and current_arg.suggestions_supplier and current_arg.suggestions_supplier(self.categories_service):
+        if current_arg and current_arg.suggestions_supplier and current_arg.suggestions_supplier(
+                self.categories_service):
             matches = [
                 (s, current_arg.name)
                 for s in current_arg.suggestions_supplier(self.categories_service)
@@ -253,7 +255,7 @@ class ExpensesTracker(App):
         # If already complete (last arg was filled via suggestion), execute immediately
         if self.state.is_complete(specs):
             event.input.clear()
-            await self._execute_command(self.state.command, self.state.collected_args)
+            self._execute_command(self.state.command, self.state.collected_args)
             self._reset_flow()
             return
 
@@ -261,7 +263,7 @@ class ExpensesTracker(App):
         current_arg = self.state.current_arg(specs)
         if current_arg:
             if not raw:
-                self.text_area.add_message(
+                self.text_area.write(
                     f"[yellow]Please enter a value for [cyan]{current_arg.name}[/cyan][/yellow]"
                 )
                 return
@@ -270,12 +272,13 @@ class ExpensesTracker(App):
         # Check again after collecting — might now be complete
         if self.state.is_complete(specs):
             event.input.clear()
-            await self._execute_command(self.state.command, self.state.collected_args)
+            self._execute_command(self.state.command, self.state.collected_args)
             self._reset_flow()
         else:
             event.input.clear()
             self._update_placeholder()
 
+    @work()  # for a response UI during database operations (see also: https://textual.textualize.io/guide/workers/)
     async def _execute_command(self, command: str, args: dict[str, str]) -> None:
         await self.command_registry.execute(command, args, self)
 
@@ -341,9 +344,3 @@ class ExpensesTracker(App):
 if __name__ == "__main__":
     app = ExpensesTracker(CategoriesService())
     app.run()
-
-# print("Fetching spending categories...")
-# categories = get_available_categories()
-# parser = setup_parser()
-# spending: Spending = parse(parser)
-# store(spending)

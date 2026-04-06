@@ -1,6 +1,6 @@
+import asyncio
 import os
 import uuid
-
 import psycopg
 
 from commands import CommandService, CommandSpec, ArgSpec, Commands
@@ -58,23 +58,35 @@ class CategoriesService(CommandService):
 
     def get_commands(self) -> list[CommandSpec]:
         return [
+            CommandSpec(name=Commands.LOAD_CATEGORIES,
+                        description="Reload spending categories",
+                        args=[],
+            ),
             CommandSpec(name=Commands.ADD_CATEGORY,
                         description="Adds a new spending category",
                         args=[
                             ArgSpec("category_name"),
                         ],
-                        ),
+            ),
             CommandSpec(name=Commands.REMOVE_CATEGORY,
                         description="Removes a spending category",
                         args=[
                             ArgSpec("category_name",
                                     lambda categories_service: [c.name for c in categories_service.get_categories()]),
                         ],
-                        ),
+            ),
         ]
 
     async def execute(self, command: str, args: dict[str, str], app) -> None:
-        if command == Commands.ADD_CATEGORY:
-            self.add_category(args.get("category_name"))
+        if command == Commands.LOAD_CATEGORIES:
+            app.text_area.start_loading("Reloading categories...")
+            await asyncio.to_thread(self.load_categories)
+            app.text_area.stop_loading("Reloaded categories from database")
+        elif command == Commands.ADD_CATEGORY:
+            app.text_area.start_loading(f"Adding {args.get("category_name")} category...")
+            await asyncio.to_thread(self.add_category, args.get("category_name"))
+            app.text_area.stop_loading(f"Added {args.get("category_name")} category")
         elif command == Commands.REMOVE_CATEGORY:
-            self.remove_category(args.get("category_name"))
+            app.text_area.start_loading(f"Removing {args.get("category_name")} category...")
+            await asyncio.to_thread(self.remove_category, args.get("category_name"))
+            app.text_area.stop_loading(f"Removed {args.get("category_name")} category")
