@@ -10,7 +10,7 @@ from textual.containers import Horizontal
 from textual.widgets import Input, Label
 
 from categories_service import CategoriesService
-from commands import ArgSpec
+from commands import CommandArg
 from commands_registry import CommandRegistry
 from suggesstions_list import CommandSuggestions
 from text_area import MainTextArea
@@ -22,7 +22,7 @@ class InputState:
     collected_args: dict[str, str] = field(default_factory=dict)
     current_arg_index: int = 0
 
-    def current_arg(self, commands: dict) -> Union[ArgSpec, None]:
+    def current_arg(self, commands: dict) -> Union[CommandArg, None]:
         if not self.command:
             return None
         args = commands[self.command].args
@@ -125,11 +125,10 @@ class ExpensesTracker(App):
 
         # Step 2+: command chosen, collecting args
         current_arg = self.state.current_arg(specs)
-        if current_arg and current_arg.suggestions_supplier and current_arg.suggestions_supplier(
-                self.categories_service):
+        if current_arg and current_arg.suggestions_supplier:
             matches = [
                 (s, current_arg.name)
-                for s in current_arg.suggestions_supplier(self.categories_service)
+                for s in current_arg.suggestions_supplier()
                 if s.startswith(value.lower())
             ]
             self.suggestions_list.show_suggestions(matches)
@@ -152,9 +151,8 @@ class ExpensesTracker(App):
         # Update placeholder for current arg
         current_arg = self.state.current_arg(specs)
         if current_arg:
-            if current_arg.suggestions_supplier and current_arg.suggestions_supplier(
-                    self.categories_service):
-                options = ", ".join(current_arg.suggestions_supplier(self.categories_service))
+            if current_arg.suggestions_supplier and current_arg.suggestions_supplier():
+                options = ", ".join(current_arg.suggestions_supplier())
                 self.input_field.placeholder = f"{current_arg.name}: {options}"
             else:
                 self.input_field.placeholder = f"Enter {current_arg.name}..."

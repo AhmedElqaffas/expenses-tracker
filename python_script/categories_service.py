@@ -3,7 +3,7 @@ import os
 import uuid
 import psycopg
 
-from commands import CommandService, CommandSpec, ArgSpec, Commands
+from commands import CommandService, Command, CommandArg, Commands
 from model import Category
 
 
@@ -56,25 +56,25 @@ class CategoriesService(CommandService):
         # remove from cache
         self.categories = [c for c in self.categories if c.name != name]
 
-    def get_commands(self) -> list[CommandSpec]:
+    def get_commands(self) -> list[Command]:
         return [
-            CommandSpec(name=Commands.LOAD_CATEGORIES,
-                        description="Reload spending categories",
-                        args=[],
-            ),
-            CommandSpec(name=Commands.ADD_CATEGORY,
-                        description="Adds a new spending category",
-                        args=[
-                            ArgSpec("category_name"),
+            Command(name=Commands.LOAD_CATEGORIES,
+                    description="Reload spending categories",
+                    args=[],
+                    ),
+            Command(name=Commands.ADD_CATEGORY,
+                    description="Adds a new spending category",
+                    args=[
+                            CommandArg("category_name"),
                         ],
-            ),
-            CommandSpec(name=Commands.REMOVE_CATEGORY,
-                        description="Removes a spending category",
-                        args=[
-                            ArgSpec("category_name",
-                                    lambda categories_service: [c.name for c in categories_service.get_categories()]),
+                    ),
+            Command(name=Commands.REMOVE_CATEGORY,
+                    description="Removes a spending category",
+                    args=[
+                            CommandArg("category_name",
+                                       lambda : [c.name for c in self.get_categories()])
                         ],
-            ),
+                    ),
         ]
 
     async def execute(self, command: str, args: dict[str, str], app) -> None:

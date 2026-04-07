@@ -1,43 +1,33 @@
 from abc import ABC, abstractmethod
-from enum import StrEnum
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Callable
 
 
 @dataclass
-class ArgSpec:
-    name: str # display name, e.g. "amount"
-    suggestions_supplier: Callable[[any], list[str]] | None = None  # empty = free text
+class CommandArg:
+    name: str  # display name, e.g. "amount"
+    suggestions_supplier: Callable[[], list[str]] | None = None  # None = free text
+
 
 @dataclass
-class CommandSpec:
+class Command:
     name: str
     description: str
-    args: list[ArgSpec] = field(default_factory=list)
+    args: list[CommandArg] = field(default_factory=list)
+
 
 class Commands(StrEnum):
     LOAD_CATEGORIES = "load_categories"
-    PRINT = "print"
     ADD_CATEGORY = "add_category"
     REMOVE_CATEGORY = "remove_category"
 
-# Slash command registry
-SLASH_COMMANDS = {
-    Commands.PRINT: {
-        "usage": "/print <level> <message>",
-        "description": "Print a message with a log level",
-        "args": [
-            ArgSpec("log_level", lambda x : ["info", "warning", "error"]),
-            ArgSpec("message"),  # free text, no suggestions
-        ],
-    },
-}
 
 class CommandService(ABC):
     """Base class for all command services. Each service registers its own commands."""
 
     @abstractmethod
-    def get_commands(self) -> list[CommandSpec]:
+    def get_commands(self) -> list[Command]:
         """Return all commands this service handles."""
         ...
 

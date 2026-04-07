@@ -1,4 +1,4 @@
-from commands import CommandSpec, CommandService
+from commands import Command, CommandService
 
 
 class CommandRegistry:
@@ -6,7 +6,7 @@ class CommandRegistry:
 
     def __init__(self):
         self._services: dict[str, CommandService] = {}  # command name -> service
-        self._specs: dict[str, CommandSpec] = {}        # command name -> spec
+        self._specs: dict[str, Command] = {}        # command name -> spec
 
     def register(self, service: CommandService) -> None:
         for spec in service.get_commands():
@@ -15,10 +15,10 @@ class CommandRegistry:
             self._specs[spec.name] = spec
             self._services[spec.name] = service
 
-    def get_spec(self, command: str) -> CommandSpec | None:
+    def get_spec(self, command: str) -> Command | None:
         return self._specs.get(command)
 
-    def all_specs(self) -> dict[str, CommandSpec]:
+    def all_specs(self) -> dict[str, Command]:
         return self._specs
 
     async def execute(self, command: str, args: dict[str, str], app) -> None:
