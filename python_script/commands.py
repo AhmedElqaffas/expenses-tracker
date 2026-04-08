@@ -10,6 +10,7 @@ class CommandArg:
     description: str
     required: bool
     suggestions_supplier: Callable[[], list[str]] | None = None  # None = free text
+    multi: bool = False
 
 
 @dataclass
@@ -35,6 +36,6 @@ class CommandService(ABC):
         ...
 
     @abstractmethod
-    async def execute(self, command: str, args: dict[str, str], app) -> None:
+    async def execute(self, command: str, args: dict[str, list[str]], app) -> None:
         """Execute a command with the given parsed args."""
         ...

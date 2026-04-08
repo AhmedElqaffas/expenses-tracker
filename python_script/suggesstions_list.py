@@ -27,6 +27,8 @@ class CommandSuggestions(ListView):
 
     def show_suggestions(self, matches: list[tuple[str, str]]) -> None:
         """Populate and show the suggestion list."""
+        import traceback
+        print("SHOW called from:", traceback.format_stack()[-2].strip())
         self.clear()
         for command, description in matches:
             self.append(ListItem(Label(f"[cyan]/{command}[/cyan]  [dim]{description}[/dim]"), name=command))
@@ -37,5 +39,7 @@ class CommandSuggestions(ListView):
             self.remove_class("visible")
 
     def hide(self) -> None:
+        import traceback
+        print("HIDE called from:", traceback.format_stack()[-2].strip())
         self.remove_class("visible")
         self.clear()

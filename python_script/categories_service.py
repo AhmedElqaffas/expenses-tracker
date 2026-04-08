@@ -82,16 +82,16 @@ class CategoriesService(CommandService):
                     ),
         ]
 
-    async def execute(self, command: str, args: dict[str, str], app) -> None:
+    async def execute(self, command: str, args: dict[str, list[str]], app) -> None:
         if command == Commands.LOAD_CATEGORIES:
             app.text_area.start_loading("Reloading categories...")
             await asyncio.to_thread(self.load_categories)
             app.text_area.stop_loading("Reloaded categories from database")
         elif command == Commands.ADD_CATEGORY:
             app.text_area.start_loading(f"Adding {args.get("category_name")} category...")
-            await asyncio.to_thread(self.add_category, args.get("category_name"))
-            app.text_area.stop_loading(f"Added {args.get("category_name")} category")
+            await asyncio.to_thread(self.add_category, args.get("category_name")[0])
+            app.text_area.stop_loading(f"Added {args.get("category_name")[0]} category")
         elif command == Commands.REMOVE_CATEGORY:
             app.text_area.start_loading(f"Removing {args.get("category_name")} category...")
-            await asyncio.to_thread(self.remove_category, args.get("category_name"))
-            app.text_area.stop_loading(f"Removed {args.get("category_name")} category")
+            await asyncio.to_thread(self.remove_category, args.get("category_name")[0])
+            app.text_area.stop_loading(f"Removed {args.get("category_name")[0]} category")

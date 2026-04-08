@@ -59,7 +59,8 @@ class SpendingService(CommandService):
                         CommandArg("category_name",
                                    "the category this item belongs to",
                                    True,
-                                   lambda: [c.name for c in self.categories_service.get_categories()]),
+                                   lambda: [c.name for c in self.categories_service.get_categories()],
+                                   True),
                         CommandArg("date",
                                    "the date you made the payment",
                                    False),
@@ -67,26 +68,28 @@ class SpendingService(CommandService):
                     ),
         ]
 
-    async def execute(self, command: str, args: dict[str, str], app) -> None:
+    async def execute(self, command: str, args: dict[str, list[str]], app) -> None:
         if command == Commands.RECORD_SPENDING:
 
-            item_name = args.get("item_name")
-            amount = float(args.get("amount"))
+            item_name = args.get("item_name")[0]
+            amount = float(args.get("amount")[0])
             date = args.get("date")
+            date = date[0] if date else None
 
+            category_names = args.get("category_name", [])
             categories: list[Category] = [c for c in self.categories_service.get_categories()
-                                          if c.name == args.get("category_name")]
+                                          if c.name in category_names]
 
             if not date:
                 date = datetime.now()
             else:
                 try:
-                    date = datetime.strptime(args.get("date"), "%d-%m-%Y")
+                    date = datetime.strptime(date, "%d-%m-%Y")
                 except ValueError:
                     try:
-                        date = datetime.strptime(args.get("date"), "%m-%Y")
+                        date = datetime.strptime(date, "%m-%Y")
                     except ValueError:
-                        print(f"{args.get("date")} does not match MM-YYYY or DD-MM-YYYY format")
+                        print(f"{date} does not match MM-YYYY or DD-MM-YYYY format")
 
             app.text_area.start_loading("Recording spending...")
             await asyncio.to_thread(self.add_spending, item_name, amount, categories, date)

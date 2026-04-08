@@ -20,7 +20,7 @@ from text_area import MainTextArea
 @dataclass
 class InputState:
     command: Union[str, None] = None
-    collected_args: dict[str, str] = field(default_factory=dict)
+    collected_args: dict[str, list[str]] = field(default_factory=dict)
     current_arg_index: int = 0
 
     def current_arg(self, commands: dict) -> Union[CommandArg, None]:
@@ -108,7 +108,7 @@ class ExpensesTracker(App):
             yield self.input_field
 
     async def on_mount(self) -> None:
-        self.text_area.write("\n :wave: [bold]Welcome, spender![/bold]\n\n\n :wave: :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold]\n\n")
+        self.text_area.write("\n :wave: [bold]Welcome, spender![/bold]\n\n\n")
 
     def on_input_changed(self, event: Input.Changed) -> None:
         value = event.value
@@ -131,10 +131,11 @@ class ExpensesTracker(App):
         # Step 2+: command chosen, collecting args
         current_arg = self.state.current_arg(specs)
         if current_arg and current_arg.suggestions_supplier:
+            already = self.state.collected_args.get(current_arg.name, [])
             matches = [
                 (s, current_arg.description)
                 for s in current_arg.suggestions_supplier()
-                if s.startswith(value.lower())
+                if s.startswith(value.lower()) and s not in already  # ← filter out picked
             ]
             self.suggestions_list.show_suggestions(matches)
         else:
@@ -149,18 +150,30 @@ class ExpensesTracker(App):
 
         # Build prefix from command + collected args so far
         parts = [f"[cyan]/{self.state.command}[/cyan]"]
-        for arg_name, arg_value in self.state.collected_args.items():
-            parts.append(f"[dim]{arg_name}:[/dim][white]{arg_value}[/white]")
+        for arg_name, arg_values in self.state.collected_args.items():
+            display = ", ".join(arg_values)
+            parts.append(f"[dim]{arg_name}:[/dim][white]{display}[/white]")
         self.prefix.update(" ".join(parts) + " ")
 
         # Update placeholder for current arg
         current_arg = self.state.current_arg(specs)
         if current_arg:
-            if current_arg.suggestions_supplier and current_arg.suggestions_supplier():
-                options = ", ".join(current_arg.suggestions_supplier())
-                self.input_field.placeholder = f"{current_arg.name}: {options}"
+            if current_arg.multi:
+                existing = self.state.collected_args.get(current_arg.name, [])
+                if existing:
+                    self.input_field.placeholder = f"Add more {current_arg.name}s, or Enter to finish"
+                else:
+                    if current_arg.suggestions_supplier and current_arg.suggestions_supplier():
+                        options = ", ".join(current_arg.suggestions_supplier())
+                        self.input_field.placeholder = f"Select {current_arg.name}(s): {options}"
+                    else:
+                        self.input_field.placeholder = f"Enter {current_arg.name}(s), Enter when done"
             else:
-                self.input_field.placeholder = f"Enter {current_arg.name}..."
+                if current_arg.suggestions_supplier and current_arg.suggestions_supplier():
+                    options = ", ".join(current_arg.suggestions_supplier())
+                    self.input_field.placeholder = f"{current_arg.name}: {options}"
+                else:
+                    self.input_field.placeholder = f"Enter {current_arg.name}..."
         else:
             self.input_field.placeholder = ""
 
@@ -184,8 +197,6 @@ class ExpensesTracker(App):
                 self._reset_flow()
             return
 
-
-
         if event.key == "down":
             self.suggestions_list.action_cursor_down()
             event.stop()
@@ -196,6 +207,8 @@ class ExpensesTracker(App):
             self._complete_suggestion()
             event.stop()
         elif event.key == "enter":
+            event.stop()
+            event.prevent_default()
             highlighted = self.suggestions_list.highlighted_child
             if highlighted:
                 self._complete_suggestion()
@@ -207,20 +220,33 @@ class ExpensesTracker(App):
             event.stop()
 
     def _step_back(self) -> None:
-        """Undo the last completed step, restoring input to what it was."""
+        specs = self.command_registry.all_specs()
+        current_arg = self.state.current_arg(specs)
+
+        # If we're on a multi-arg that already has values, just clear them
+        if current_arg and current_arg.multi:
+            existing = self.state.collected_args.get(current_arg.name, [])
+            if existing:
+                self.state.collected_args.pop(current_arg.name)
+                self.input_field.value = ""
+                self._update_placeholder()
+                self.input_field.cursor_position = 0
+                return
+
+        # Otherwise step back to previous arg as normal
         if self.state.current_arg_index > 0:
-            # Undo last collected arg — restore its value to input
             self.state.current_arg_index -= 1
-            current_arg = self.state.current_arg(self.command_registry.all_specs())
-            last_value = self.state.collected_args.pop(current_arg.name, "")
-            self.input_field.value = last_value
+            current_arg = self.state.current_arg(specs)
+            last_values = self.state.collected_args.pop(current_arg.name, [])
+            if current_arg.multi:
+                self.input_field.value = ""
+            else:
+                self.input_field.value = last_values[0] if last_values else ""
         elif self.state.command is not None:
-            # Undo command selection — restore "/command" to input
             self.input_field.value = f"/{self.state.command}"
             self.state.command = None
 
         self._update_placeholder()
-        # Move cursor to end of restored value
         self.input_field.cursor_position = len(self.input_field.value)
 
     def _complete_suggestion(self) -> None:
@@ -242,39 +268,63 @@ class ExpensesTracker(App):
         self._update_placeholder()
 
     def _advance_arg(self, value: str) -> None:
-        """Store current arg value and move to the next one."""
         current_arg = self.state.current_arg(self.command_registry.all_specs())
         if current_arg:
-            self.state.collected_args[current_arg.name] = value
-            self.state.current_arg_index += 1
-        self.input_field.value = ""
+            if current_arg.multi:
+                self.state.collected_args.setdefault(current_arg.name, []).append(value)
+                if current_arg.suggestions_supplier:  # ← only show suggestions if supplier exists
+                    already = self.state.collected_args.get(current_arg.name, [])
+                    matches = [
+                        (s, current_arg.description)
+                        for s in current_arg.suggestions_supplier()
+                        if s not in already
+                    ]
+                    self.suggestions_list.show_suggestions(matches)
+            else:
+                self.state.collected_args[current_arg.name] = [value]
+                self.state.current_arg_index += 1
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        self.suggestions_list.hide()
         raw = event.value.strip()
         specs = self.command_registry.all_specs()
 
         if self.state.command is None:
             return
 
-        # If already complete (last arg was filled via suggestion), execute immediately
         if self.state.is_complete(specs):
+            self.suggestions_list.hide()
             event.input.clear()
             self._execute_command(self.state.command, self.state.collected_args)
             self._reset_flow()
             return
 
-        # Otherwise collect the current free-text arg from input
         current_arg: CommandArg = self.state.current_arg(specs)
         if current_arg:
-            if current_arg.required and not raw:
-                self.text_area.write(
-                    f"[yellow]Please enter a value for [cyan]{current_arg.name}[/cyan][/yellow]"
-                )
-                return
-            self._advance_arg(raw)
+            if current_arg.multi and not raw:
+                existing = self.state.collected_args.get(current_arg.name, [])
+                if existing:
+                    self.suggestions_list.hide()
+                    self.state.current_arg_index += 1
+                elif current_arg.required:
+                    self.text_area.write(
+                        f"[yellow]Please select at least one [cyan]{current_arg.name}[/cyan][/yellow]"
+                    )
+                    return
+                else:
+                    self.state.current_arg_index += 1
+            elif not raw:
+                if current_arg.required:
+                    self.text_area.write(
+                        f"[yellow]Please enter a value for [cyan]{current_arg.name}[/cyan][/yellow]"
+                    )
+                    return
+                else:
+                    self.state.current_arg_index += 1
+            elif raw:
+                self.suggestions_list.hide()
+                self._advance_arg(raw)
 
-        # Check again after collecting — might now be complete
+        # Re-check completion after any index changes above
         if self.state.is_complete(specs):
             event.input.clear()
             self._execute_command(self.state.command, self.state.collected_args)
