@@ -21,8 +21,13 @@ class CommandRegistry:
     def all_specs(self) -> dict[str, Command]:
         return self._specs
 
+    def all_services(self) -> dict[str, CommandService]:
+        return self._services
+
     async def execute(self, command: str, args: dict[str, str], app) -> None:
         service = self._services.get(command)
         if not service:
             raise KeyError(f"No service registered for command '{command}'.")
         await service.execute(command, args, app)
+
+registry = CommandRegistry()

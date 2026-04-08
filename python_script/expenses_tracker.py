@@ -12,6 +12,7 @@ from textual.widgets import Input, Label
 from categories_service import CategoriesService
 from commands import CommandArg
 from commands_registry import CommandRegistry
+from spending_service import SpendingService
 from suggesstions_list import CommandSuggestions
 from text_area import MainTextArea
 
@@ -67,6 +68,7 @@ class ExpensesTracker(App):
     AUTO_FOCUS = "#input"
 
     categories_service: CategoriesService
+    spending_service: SpendingService
 
     text_area: MainTextArea
     input_field: Input
@@ -75,13 +77,16 @@ class ExpensesTracker(App):
 
     state = InputState()
 
-    def __init__(self, categories_service: CategoriesService) -> None:
+    def __init__(self, categories_service: CategoriesService,
+                 spending_service: SpendingService) -> None:
         super().__init__()
         self._load_env()
         self.categories_service = categories_service
+        self.spending_service = spending_service
         categories_service.load_categories()
         self.command_registry = CommandRegistry()
         self.command_registry.register(categories_service)
+        self.command_registry.register(spending_service)
 
     def _load_env(self):
         load_dotenv()
@@ -103,7 +108,7 @@ class ExpensesTracker(App):
             yield self.input_field
 
     async def on_mount(self) -> None:
-        self.text_area.write("\n :wave: [bold]Welcome, spender![/bold]\n\n")
+        self.text_area.write("\n :wave: [bold]Welcome, spender![/bold]\n\n\n :wave: :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold] :wave: [bold]Welcome, spender![/bold]\n\n")
 
     def on_input_changed(self, event: Input.Changed) -> None:
         value = event.value
@@ -127,7 +132,7 @@ class ExpensesTracker(App):
         current_arg = self.state.current_arg(specs)
         if current_arg and current_arg.suggestions_supplier:
             matches = [
-                (s, current_arg.name)
+                (s, current_arg.description)
                 for s in current_arg.suggestions_supplier()
                 if s.startswith(value.lower())
             ]
@@ -178,6 +183,8 @@ class ExpensesTracker(App):
             if event.key == "escape":
                 self._reset_flow()
             return
+
+
 
         if event.key == "down":
             self.suggestions_list.action_cursor_down()
@@ -258,9 +265,9 @@ class ExpensesTracker(App):
             return
 
         # Otherwise collect the current free-text arg from input
-        current_arg = self.state.current_arg(specs)
+        current_arg: CommandArg = self.state.current_arg(specs)
         if current_arg:
-            if not raw:
+            if current_arg.required and not raw:
                 self.text_area.write(
                     f"[yellow]Please enter a value for [cyan]{current_arg.name}[/cyan][/yellow]"
                 )
@@ -280,65 +287,7 @@ class ExpensesTracker(App):
     async def _execute_command(self, command: str, args: dict[str, str]) -> None:
         await self.command_registry.execute(command, args, self)
 
-
-# def setup_parser():
-#     parser = argparse.ArgumentParser(
-#         prog="Spending Tracker",
-#         description="Saves your expenses to a sql database",
-#         add_help=True)
-#     parser.add_argument("amount", help="Amount of the spending")
-#     parser.add_argument("item", help="The item paid for")
-#     parser.add_argument("categories", help="Categories of the spending", nargs='+', choices=categories,
-#                         type=lambda s: s.lower())  # allow uppercase
-#     parser.add_argument("-d", "--date", help="Date of the spending in MM-YYYY or DD-MM-YYYY format",
-#                         required=False, default=datetime.datetime.now().strftime("%d-%m-%Y"))
-#     return parser
-#
-# def parse(parser: argparse.ArgumentParser) -> Spending:
-#     args = parser.parse_args()
-#     amount = float(args.amount)
-#     item = args.item
-#     categories = args.categories
-#     # get date
-#     try:
-#         date = datetime.datetime.strptime(args.date, "%d-%m-%Y")
-#     except ValueError:
-#         try:
-#             date = datetime.datetime.strptime(args.date, "%m-%Y")
-#         except ValueError:
-#             print(f"{args.date} does not match MM-YYYY or DD-MM-YYYY format")
-#             exit(1)
-#     return Spending(amount=amount, item=item, categories=categories, date=date)
-#
-# def store(spending: Spending):
-#     spending_id = uuid.uuid4()
-#     amount = spending.amount
-#     item = spending.item.lower()
-#     categories = spending.categories
-#     date = spending.date
-#     print("Recording the following spending:")
-#     print(f"\tPaid {amount} on {date.day}-{date.month}-{date.year} for {item}. #{(' #'.join(categories))}")
-#     with psycopg.connect(os.environ["DB_CONNECTION_STRING"]) as conn:
-#         with conn.cursor() as cur:
-#             cur.execute("""
-#             INSERT INTO spendings (id, amount, item, date) VALUES (%s, %s, %s, %s)
-#             """, (spending_id, amount, item, date)
-#                         )
-#             categories_placeholder = ', '.join(['%s'] * len(categories))
-#             cur.execute(f"""
-#             SELECT id FROM categories
-#             WHERE name IN ({categories_placeholder})
-#             """, categories)
-#             categories_id = [c[0] for c in cur.fetchall()]
-#
-#             for category_id in categories_id:
-#                 cur.execute("""
-#                 INSERT INTO spendings_categories (spending, category) VALUES (%s, %s)
-#                 """, (spending_id, category_id)
-#                             )
-#         conn.commit()
-#         conn.close()
-
 if __name__ == "__main__":
-    app = ExpensesTracker(CategoriesService())
+    categories_service = CategoriesService()
+    app = ExpensesTracker(categories_service, SpendingService(categories_service))
     app.run()

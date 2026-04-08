@@ -7,6 +7,8 @@ from typing import Callable
 @dataclass
 class CommandArg:
     name: str  # display name, e.g. "amount"
+    description: str
+    required: bool
     suggestions_supplier: Callable[[], list[str]] | None = None  # None = free text
 
 
@@ -21,6 +23,7 @@ class Commands(StrEnum):
     LOAD_CATEGORIES = "load_categories"
     ADD_CATEGORY = "add_category"
     REMOVE_CATEGORY = "remove_category"
+    RECORD_SPENDING = "record_spending"
 
 
 class CommandService(ABC):

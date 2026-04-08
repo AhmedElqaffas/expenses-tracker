@@ -65,13 +65,18 @@ class CategoriesService(CommandService):
             Command(name=Commands.ADD_CATEGORY,
                     description="Adds a new spending category",
                     args=[
-                            CommandArg("category_name"),
+                            CommandArg("category_name",
+                                       "the category to be added",
+                                       True,
+                                       ),
                         ],
                     ),
             Command(name=Commands.REMOVE_CATEGORY,
                     description="Removes a spending category",
                     args=[
                             CommandArg("category_name",
+                                       "the category to be removed",
+                                       True,
                                        lambda : [c.name for c in self.get_categories()])
                         ],
                     ),
