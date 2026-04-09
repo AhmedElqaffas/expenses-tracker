@@ -1,5 +1,6 @@
 import os
 import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dataclasses import dataclass, field
 from typing import Union
 
@@ -15,7 +16,6 @@ from commands_registry import CommandRegistry
 from spending_service import SpendingService
 from suggesstions_list import CommandSuggestions
 from text_area import MainTextArea
-
 
 @dataclass
 class InputState:
@@ -184,13 +184,32 @@ class ExpensesTracker(App):
         self.input_field.placeholder = "Type / for commands"
         self.suggestions_list.hide()
 
-    def on_key(self, event) -> None:
-        # Backspace on empty input = undo last step
+    async def on_key(self, event) -> None:
         if event.key == "backspace" and self.input_field.value == "":
             if self.state.command is not None:
                 self._step_back()
                 event.stop()
                 return
+
+        if event.key == "enter":
+            event.stop()
+            event.prevent_default()
+            if "visible" in self.suggestions_list.classes:
+                highlighted = self.suggestions_list.highlighted_child
+                if highlighted:
+                    was_command = self.state.command is None
+                    self._complete_suggestion()
+                    if was_command:
+                        if not self.state.is_complete(self.command_registry.all_specs()):
+                            return  # has args, wait for them
+                    else:
+                        # check if we just completed a multi-arg value
+                        specs = self.command_registry.all_specs()
+                        current_arg = self.state.current_arg(specs)
+                        if current_arg and current_arg.multi:
+                            return  # stay on this arg for more values
+            await self._handle_submit(self.input_field.value)
+            return
 
         if "visible" not in self.suggestions_list.classes:
             if event.key == "escape":
@@ -206,15 +225,6 @@ class ExpensesTracker(App):
         elif event.key == "tab":
             self._complete_suggestion()
             event.stop()
-        elif event.key == "enter":
-            event.stop()
-            event.prevent_default()
-            highlighted = self.suggestions_list.highlighted_child
-            if highlighted:
-                self._complete_suggestion()
-                if not self.state.is_complete(self.command_registry.all_specs()):
-                    event.prevent_default()  # more args needed, stay in input
-                event.stop()
         elif event.key == "escape":
             self.suggestions_list.hide()
             event.stop()
@@ -284,8 +294,8 @@ class ExpensesTracker(App):
                 self.state.collected_args[current_arg.name] = [value]
                 self.state.current_arg_index += 1
 
-    async def on_input_submitted(self, event: Input.Submitted) -> None:
-        raw = event.value.strip()
+    async def _handle_submit(self, raw_value: str) -> None:
+        raw = raw_value.strip()
         specs = self.command_registry.all_specs()
 
         if self.state.command is None:
@@ -293,7 +303,7 @@ class ExpensesTracker(App):
 
         if self.state.is_complete(specs):
             self.suggestions_list.hide()
-            event.input.clear()
+            self.input_field.clear()
             self._execute_command(self.state.command, self.state.collected_args)
             self._reset_flow()
             return
@@ -322,15 +332,15 @@ class ExpensesTracker(App):
                     self.state.current_arg_index += 1
             elif raw:
                 self.suggestions_list.hide()
+                self.input_field.value = ""
                 self._advance_arg(raw)
 
-        # Re-check completion after any index changes above
         if self.state.is_complete(specs):
-            event.input.clear()
+            self.input_field.clear()
             self._execute_command(self.state.command, self.state.collected_args)
             self._reset_flow()
         else:
-            event.input.clear()
+            self.input_field.clear()
             self._update_placeholder()
 
     @work()  # for a response UI during database operations (see also: https://textual.textualize.io/guide/workers/)
